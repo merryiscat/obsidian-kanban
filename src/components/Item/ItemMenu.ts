@@ -56,7 +56,15 @@ export function useItemMenu({
             .setTitle(t('New note from card'))
             .onClick(async () => {
               const prevTitle = item.data.titleRaw.split('\n')[0].trim();
-              const sanitizedTitle = prevTitle
+
+              // Extract date metadata if it exists
+              const dateMatch = prevTitle.match(/@\{[^}]+\}/);
+              const dateMetadata = dateMatch ? dateMatch[0] : '';
+
+              // Remove date metadata from title before sanitizing
+              const titleWithoutDate = prevTitle.replace(/@\{[^}]+\}/, '').trim();
+
+              const sanitizedTitle = titleWithoutDate
                 .replace(embedRegEx, '$1')
                 .replace(wikilinkRegEx, '$1')
                 .replace(mdLinkRegEx, '$1')
@@ -85,9 +93,11 @@ export function useItemMenu({
 
               await applyTemplate(stateManager, newNoteTemplatePath as string | undefined);
 
+              // Replace title with link and preserve date metadata outside the link
+              const markdownLink = stateManager.app.fileManager.generateMarkdownLink(newFile, stateManager.file.path);
               const newTitleRaw = item.data.titleRaw.replace(
                 prevTitle,
-                stateManager.app.fileManager.generateMarkdownLink(newFile, stateManager.file.path)
+                dateMetadata ? `${markdownLink} ${dateMetadata}` : markdownLink
               );
 
               boardModifiers.updateItem(path, stateManager.updateItemContent(item, newTitleRaw));
